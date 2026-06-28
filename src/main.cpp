@@ -7,13 +7,16 @@
 using namespace std;
 
 int main() {
+
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(4221);      
-    server_addr.sin_addr.s_addr = INADDR_ANY; 
+    server_addr.sin_port = htons(4221);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
     bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
@@ -31,15 +34,12 @@ int main() {
         string request = buffer;
 
         int first_space = request.find(' ');
-
         int second_space = request.find(' ', first_space + 1);
-
         string path = request.substr(first_space + 1, second_space - first_space - 1);
 
         cout << "Requested path: " << path << endl;
 
         string response;
-
         if (path == "/") {
             response = "HTTP/1.1 200 OK\r\n\r\n";
         } else {
@@ -52,6 +52,5 @@ int main() {
     }
 
     close(server_fd);
-
     return 0;
 }
