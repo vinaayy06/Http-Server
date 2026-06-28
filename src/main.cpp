@@ -7,27 +7,44 @@
 using namespace std;
 
 int main() {
-
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
     struct sockaddr_in server_addr;
-
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(4221);
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(4221);      
+    server_addr.sin_addr.s_addr = INADDR_ANY; 
 
     bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
     listen(server_fd, 5);
 
+    cout << "Server is running on port 4221..." << endl;
+
     while (true) {
 
         int client_fd = accept(server_fd, NULL, NULL);
 
-        string response = "HTTP/1.1 200 OK\r\n\r\n";
+        char buffer[1024] = {};
+        recv(client_fd, buffer, sizeof(buffer), 0);
+
+        string request = buffer;
+
+        int first_space = request.find(' ');
+
+        int second_space = request.find(' ', first_space + 1);
+
+        string path = request.substr(first_space + 1, second_space - first_space - 1);
+
+        cout << "Requested path: " << path << endl;
+
+        string response;
+
+        if (path == "/") {
+            response = "HTTP/1.1 200 OK\r\n\r\n";
+        } else {
+            response = "HTTP/1.1 404 Not Found\r\n\r\n";
+        }
 
         send(client_fd, response.c_str(), response.length(), 0);
 
