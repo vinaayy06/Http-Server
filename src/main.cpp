@@ -15,8 +15,8 @@ int main() {
 
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(4221);
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(4221);     
+    server_addr.sin_addr.s_addr = INADDR_ANY; 
 
     bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
@@ -40,9 +40,27 @@ int main() {
         cout << "Requested path: " << path << endl;
 
         string response;
+
         if (path == "/") {
+
             response = "HTTP/1.1 200 OK\r\n\r\n";
+
+        } else if (path.substr(0, 6) == "/echo/") {
+
+            string body = path.substr(6);
+
+            response = "HTTP/1.1 200 OK\r\n";
+
+            response += "Content-Type: text/plain\r\n";
+
+            response += "Content-Length: " + to_string(body.length()) + "\r\n";
+
+            response += "\r\n";
+
+            response += body;
+
         } else {
+
             response = "HTTP/1.1 404 Not Found\r\n\r\n";
         }
 
