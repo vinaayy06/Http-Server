@@ -3,4 +3,4 @@ project(http-server-starter-cpp)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(server src/main.cpp)
+add_executable(http-server src/main.cpp)
