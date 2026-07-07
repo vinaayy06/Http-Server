@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cstdlib>
 #include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -7,70 +6,41 @@
 
 using namespace std;
 
-int main(int argc, char **argv) {
-    cout << unitbuf;
-    cerr << unitbuf;
+int main() {
 
-    cout << "Logs from your program will appear here!" << endl;
-
-    // Create socket
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
-    if (server_fd < 0) {
-        cerr << "Failed to create socket" << endl;
-        return 1;
-    }
-
-    // Allow address reuse
-    int yes = 1;
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-
-    // Server address
-    sockaddr_in server_addr{};
+    int opt = 1;
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(4221);      
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(4221);
+    bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    listen(server_fd, 5);
 
-    // Bind socket
-    if (bind(server_fd, (sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        cerr << "Bind failed" << endl;
-        return 1;
-    }
-
-    // Start listening
-    if (listen(server_fd, 5) < 0) {
-        cerr << "Listen failed" << endl;
-        return 1;
-    }
+    cout << "Server is running on port 4221..." << endl;
 
     while (true) {
+        int client_fd = accept(server_fd, NULL, NULL);
+        char buffer[1024] = {};
+        recv(client_fd, buffer, sizeof(buffer), 0);
+        string request = buffer;
+        int first_space = request.find(' ');
+        int second_space = request.find(' ', first_space + 1);
+        string path = request.substr(first_space + 1, second_space - first_space - 1);
 
-        sockaddr_in client_addr{};
-        socklen_t client_addr_len = sizeof(client_addr);
+        cout << "Requested path: " << path << endl;
+        string response;
 
-        int client_fd = accept(
-            server_fd,
-            (sockaddr *)&client_addr,
-            &client_addr_len
-        );
-
-        if (client_fd < 0) {
-            continue;
+        if (path == "/") {
+            response = "HTTP/1.1 200 OK\r\n\r\n";
+        } else {
+            response = "HTTP/1.1 404 Not Found\r\n\r\n";
         }
 
-        // HTTP Response
-        string response = "HTTP/1.1 200 OK\r\n\r\n";
-
-        send(
-            client_fd,
-            response.c_str(),
-            response.size(),
-            0
-        );
-
+        send(client_fd, response.c_str(), response.length(), 0);
         close(client_fd);
     }
-
     close(server_fd);
 
     return 0;
