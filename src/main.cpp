@@ -6,20 +6,19 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
-#include <zlib.h>         
+#include <zlib.h>
 
 using namespace std;
 string directory = "";
 string gzip_compress(const string& data) {
+
     z_stream zs;
     memset(&zs, 0, sizeof(zs));
     deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY);
     zs.next_in = (Bytef*)data.data();
     zs.avail_in = data.size();
-
     string compressed = "";
     char buffer[32768];
-
     int result;
 
     do {
@@ -31,12 +30,10 @@ string gzip_compress(const string& data) {
 
     } while (result == Z_OK);
     deflateEnd(&zs);
+
     return compressed;
 }
-void handle_client(int client_fd) {
-    char buffer[4096] = {};
-    recv(client_fd, buffer, sizeof(buffer), 0);
-    string request = buffer;
+string handle_request(const string& request) {
     int first_space = request.find(' ');
     string method = request.substr(0, first_space);
 
@@ -64,8 +61,6 @@ void handle_client(int client_fd) {
         accept_encoding = request.substr(ae_start, ae_end - ae_start);
     }
     bool supports_gzip = (accept_encoding.find("gzip") != string::npos);
-
-    cout << "Supports gzip: " << (supports_gzip ? "yes" : "no") << endl;
     string body = "";
     int body_start = request.find("\r\n\r\n");
     if (body_start != string::npos) {
@@ -84,26 +79,24 @@ void handle_client(int client_fd) {
     if (!content_length_str.empty()) {
         content_length = stoi(content_length_str);
     }
-    if (content_length > 0) {
+    if (content_length > 0 && body.length() > (size_t)content_length) {
         body = body.substr(0, content_length);
     }
     string response;
 
     if (path == "/") {
-
         response = "HTTP/1.1 200 OK\r\n\r\n";
 
     } else if (path.substr(0, 6) == "/echo/") {
         string echo_body = path.substr(6);
-
         response = "HTTP/1.1 200 OK\r\n";
 
         if (supports_gzip) {
             string compressed_body = gzip_compress(echo_body);
+
             response += "Content-Encoding: gzip\r\n";
             response += "Content-Type: text/plain\r\n";
             response += "Content-Length: " + to_string(compressed_body.length()) + "\r\n";
-
             response += "\r\n";
             response += compressed_body;
 
@@ -164,8 +157,31 @@ void handle_client(int client_fd) {
     } else {
         response = "HTTP/1.1 404 Not Found\r\n\r\n";
     }
-    send(client_fd, response.c_str(), response.length(), 0);
 
+    return response;
+}
+void handle_client(int client_fd) {
+    while (true) {
+        char buffer[4096] = {};
+        int bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+
+        if (bytes_received <= 0) {
+            cout << "Client disconnected." << endl;
+            break;
+        }
+        string request = buffer;
+        bool should_close = (request.find("Connection: close") != string::npos);
+        string response = handle_request(request);
+
+        send(client_fd, response.c_str(), response.length(), 0);
+
+        if (should_close) {
+            cout << "Client requested connection close." << endl;
+            break;
+
+        }
+        cout << "Waiting for next request on same connection..." << endl;
+    }
     close(client_fd);
 }
 
