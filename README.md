@@ -1,6 +1,6 @@
 # Http-Server
 
-An HTTP/1.1 server built from scratch in modern C++ using raw POSIX sockets — no external HTTP frameworks. Built as part of the [CodeCrafters "Build Your Own HTTP Server"](https://codecrafters.io) challenge.
+An HTTP/1.1 server built from scratch in modern C++ using raw POSIX sockets — no external HTTP frameworks.
 
 ## Features
 
@@ -23,7 +23,6 @@ An HTTP/1.1 server built from scratch in modern C++ using raw POSIX sockets — 
 ```
 Http-Server/
 ├── src/                    # Server source code
-├── .codecrafters/          # CodeCrafters challenge config
 ├── CMakeLists.txt          # Build configuration
 ├── vcpkg.json               # Dependency manifest
 ├── vcpkg-configuration.json
@@ -76,4 +75,4 @@ This project was built to get hands-on experience with:
 
 ## License
 
-This project is for educational purposes as part of the CodeCrafters challenge.
+This project is for educational purposes.
