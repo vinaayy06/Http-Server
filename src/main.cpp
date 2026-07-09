@@ -11,7 +11,6 @@
 using namespace std;
 string directory = "";
 string gzip_compress(const string& data) {
-
     z_stream zs;
     memset(&zs, 0, sizeof(zs));
     deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY);
@@ -164,7 +163,6 @@ void handle_client(int client_fd) {
     while (true) {
         char buffer[4096] = {};
         int bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
-
         if (bytes_received <= 0) {
             cout << "Client disconnected." << endl;
             break;
@@ -172,9 +170,7 @@ void handle_client(int client_fd) {
         string request = buffer;
         bool should_close = (request.find("Connection: close") != string::npos);
         string response = handle_request(request);
-
         send(client_fd, response.c_str(), response.length(), 0);
-
         if (should_close) {
             cout << "Client requested connection close." << endl;
             break;
