@@ -1,78 +1,95 @@
 # Http-Server
 
-An HTTP/1.1 server built from scratch in modern C++ using raw POSIX sockets — no external HTTP frameworks.
+![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
+![Build](https://img.shields.io/badge/build-CMake-064F8C.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## Features
+A multithreaded HTTP/1.1 server built from scratch in modern C++ using raw POSIX sockets — no external HTTP frameworks (no Boost.Asio, no cpp-httplib). Every part of the protocol — connection handling, request parsing, response construction, compression — is implemented manually at the socket level.
 
-- **Request parsing** — parses HTTP/1.1 request lines, headers, and bodies manually from raw socket data
-- **Concurrent connections** — spawns a detached thread per client connection (`std::thread` + `.detach()`) so multiple clients are served simultaneously
-- **Persistent connections (keep-alive)** — supports HTTP/1.1 persistent connections, reusing the same TCP socket across multiple requests
-- **gzip compression** — compresses response bodies with gzip when the client advertises support via `Accept-Encoding`
-- **Static file serving** — reads and serves files from disk, with support for `GET` and `POST` file I/O
-- **Modular architecture** — request handling, response building, and connection logic are separated for readability
+## Highlights
+
+- **Concurrent client handling** — spawns a dedicated thread per connection, allowing multiple clients to be served simultaneously without blocking
+- **Persistent connections (HTTP keep-alive)** — reuses a single TCP socket across multiple requests instead of reconnecting for every call, reducing connection overhead
+- **On-the-fly gzip compression** — compresses response bodies when the client advertises support via `Accept-Encoding`, cutting payload size for compressible content
+- **Manual HTTP/1.1 parsing** — request line, headers, and body are parsed directly from the raw byte stream, with no parsing library
+- **File I/O endpoints** — reads and writes files from disk in response to `GET`/`POST` requests
+- **Modular, readable codebase** — connection handling, request parsing, and response building are cleanly separated
 
 ## Tech Stack
 
-- **C++** (POSIX sockets, `std::thread`)
-- **CMake** — build system
-- **vcpkg** — dependency management (see `vcpkg.json`)
-- **Shell** — build/run scripts (`your_program.sh`)
+| Layer | Tooling |
+|---|---|
+| Language | C++17, POSIX sockets, `std::thread` |
+| Build system | CMake |
+| Dependency management | vcpkg |
+| Scripts | Shell |
 
 ## Project Structure
 
 ```
 Http-Server/
-├── src/                    # Server source code
-├── CMakeLists.txt          # Build configuration
-├── vcpkg.json               # Dependency manifest
-├── vcpkg-configuration.json
-└── your_program.sh          # Build & run entrypoint
+├── src/                      # Server source code (connection handling, parsing, routing)
+├── CMakeLists.txt            # Build configuration
+├── vcpkg.json                 # Dependency manifest
+├── vcpkg-configuration.json   # vcpkg registry configuration
+└── run.sh                     # Build & run entrypoint
 ```
 
-## Building and Running
+## Getting Started
 
-This project uses CMake with vcpkg for dependencies.
+**Prerequisites:** a C++17-capable compiler, CMake, and [vcpkg](https://vcpkg.io).
 
 ```bash
-# Clone the repo
 git clone https://github.com/vinaayy06/Http-Server.git
 cd Http-Server
-
-# Build and run
-./your_program.sh
+./run.sh
 ```
 
-The script handles configuring CMake with the vcpkg toolchain, building the binary, and starting the server.
+The script configures CMake with the vcpkg toolchain, builds the binary, and starts the server on `localhost:4221`.
 
-By default the server listens on `localhost:4221`. Once running, you can test it with:
+### Try it out
 
 ```bash
+# Basic request
 curl -v http://localhost:4221/
+
+# Echo endpoint
 curl -v http://localhost:4221/echo/hello
-curl -v --compressed http://localhost:4221/echo/hello   # test gzip
+
+# gzip compression
+curl -v --compressed http://localhost:4221/echo/hello
+
+# Write a file
 curl -v -X POST --data "sample content" http://localhost:4221/files/test.txt
+
+# Read it back
 curl -v http://localhost:4221/files/test.txt
 ```
-
-*(Adjust paths/port above if your route handling or config differs — update this section to match your actual endpoints.)*
 
 ## How It Works
 
 1. The server opens a listening TCP socket and accepts incoming connections in a loop.
-2. Each accepted connection is handed off to a new detached thread (`handle_client`), so the main loop can immediately accept the next connection.
-3. Inside each thread, the raw request is read from the socket and parsed into method, path, headers, and body.
-4. Based on the path, the server routes the request to the appropriate handler (echo, file read/write, etc.).
-5. If the client supports gzip (`Accept-Encoding: gzip`), the response body is compressed before sending.
-6. If the client requested `Connection: keep-alive` (default in HTTP/1.1), the socket stays open for subsequent requests instead of closing after one response.
+2. Each accepted connection is handed off to a new detached thread, so the main loop can immediately accept the next connection — no client has to wait on another.
+3. Within each thread, the raw request is read from the socket and parsed into method, path, headers, and body.
+4. The request is routed to the appropriate handler based on path (echo, file read/write, etc.).
+5. If the client supports gzip, the response body is compressed before being written back to the socket.
+6. If the connection is `keep-alive` (the HTTP/1.1 default), the socket stays open for further requests instead of closing after one response.
 
-## Learning Goals
+## Why I Built This
 
-This project was built to get hands-on experience with:
-- Low-level networking (POSIX sockets, `bind`/`listen`/`accept`)
-- The HTTP/1.1 protocol internals (headers, status lines, chunked/keep-alive semantics)
-- Concurrency in C++ (threading, resource cleanup)
-- Systems programming fundamentals outside of high-level frameworks
+I wanted low-level, hands-on experience with the things a web framework normally hides:
+
+- Raw networking (`socket`, `bind`, `listen`, `accept`) instead of a framework's connection layer
+- The actual bytes of the HTTP/1.1 protocol — status lines, headers, keep-alive semantics
+- Concurrency in C++ — thread lifecycle, safe resource cleanup, avoiding race conditions across client threads
+- Systems programming fundamentals that carry over to any backend or infrastructure work
+
+## Possible Improvements
+
+- Replace detached threads with a fixed-size thread pool to cap resource usage under high load
+- Add chunked transfer-encoding support for streaming responses
+- Add basic routing/middleware abstraction for extensibility
 
 ## License
 
-This project is for educational purposes.
+MIT — see [LICENSE](LICENSE) for details.
